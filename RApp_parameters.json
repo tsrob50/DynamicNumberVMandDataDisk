@@ -1,0 +1,82 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "value": "centralus"
+        },
+        "virtualMachineNamePrefix": {
+            "value": "VM_Prefix"
+        },
+        "virtualMachineSize": {
+            "value": "Standard_A2_v2"
+        },
+        "adminUsername": {
+            "value": "LocalAdmin_Can_Not_Be_Administrator"
+        },
+        "adminPassword": {
+          "reference": {
+          "keyVault": {
+            "id": "Resource_ID_of_Key_Vault"
+          },
+          "secretName": "Name_Of_Secret"
+        }
+        },
+        "firstIpAddress": {
+            "value": "First_IP,each_VM_Will_Increment_By_1"
+        },
+        "virtualNetworkResourceGroup": {
+            "value": "Assumes_vNet_is_in_a_different_RG"
+        },
+        "virtualNetworkName": {
+            "value": "vNet_Name"
+        },
+        "subnetName": {
+            "value": "Subnet_Name"
+        },
+        "availabilitySetName": {
+            "value": "Availability_set_name"
+        },
+        "availabilitySetPlatformFaultDomainCount": {
+            "value": "2"
+        },
+        "availabilitySetPlatformUpdateDomainCount": {
+            "value": "5"
+        },
+        "storageAccountName": {
+            "value": "Storage_account_name"
+        },
+        "storageAccountType": {
+            "value": "Standard_LRS"
+        },
+        "sizeOfDataDisksInGB": {
+            "value": "1023"
+        },
+        "numberOfDataDisks": {
+            "value": 3
+        },
+        "domainToJoin": {
+            "value": "Domain_to_join"
+        },
+        "domainUsername": {
+            "value": "Domain_account_with_rights_to_add_computer"
+        },
+        "domainPassword": {
+          "reference": {
+          "keyVault": {
+            "id": "Resource_ID_of_Key_Vault"
+          },
+          "secretName": "Secret_name_for_domain_join_account_PW"
+        }
+        },
+        "ouPath": {
+            "value": "OU=SERVERS,DC=domain,DC=com"
+        },
+        "domainJoinOptions": {
+            "value": 3
+        },
+        "numberOfInstances": {
+            "value": 5
+        }
+    }
+}
