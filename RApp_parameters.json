@@ -50,7 +50,7 @@
             "value": "Standard_LRS"
         },
         "sizeOfDataDisksInGB": {
-            "value": "1023"
+            "value": "2047"
         },
         "numberOfDataDisks": {
             "value": 3
@@ -76,7 +76,7 @@
             "value": 3
         },
         "numberOfInstances": {
-            "value": 5
+            "value": 2
         }
     }
 }
