@@ -5,6 +5,13 @@
         "location": {
             "type": "string"
         },
+        "tagValues": {
+            "type": "object",
+            "defaultValue": {
+              "Dept": "Finance",
+              "Environment": "Production"
+            }
+          },
         "virtualMachineNamePrefix": {
             "type": "string"
         },
@@ -36,7 +43,10 @@
             "type": "string"
         },
         "storageAccountName": {
-            "type": "string"
+            "type": "string",
+            "metadata": {
+                "description": "Managed disks in use, storage account for server diagnostic information"
+            }
         },
         "storageAccountType": {
             "type": "string"
@@ -45,7 +55,10 @@
             "type": "string"
         },
         "sizeOfDataDisksInGB": {
-            "type": "string"
+            "type": "string",
+            "metadata": {
+                "description": "Managed disks billed at size allocated, not used"
+            }
         },
         "numberOfDataDisks": {
             "type": "int"
@@ -85,10 +98,28 @@
         "numberOfInstances": {
             "type": "int",
             "defaultValue": 2,
-            "minValue": 2,
+            "minValue": 1,
             "maxValue": 9,
             "metadata": {
                 "description": "Number of VMs to deploy"
+            }
+        },
+        "keyVaultURL": {
+            "type": "string",
+            "metadata": {
+                "description": "The URL for the Key Vault used to store the KEK and BEK"
+            }
+        },
+        "keyVaultResourceId": {
+            "type": "string",
+            "metadata": {
+                "description": "Resource ID for the KeyVault, starts with /subscriptions"
+            }
+        },
+        "keyEncryptionKeyURL": {
+            "type": "string",
+            "metadata": {
+                "description": "The URL for the KEK that will be used as a wrapper for the BEK"
             }
         }
     },
@@ -101,14 +132,15 @@
         {
             "name": "[concat(parameters('virtualMachineNamePrefix'), copyIndex(1))]",
             "type": "Microsoft.Compute/virtualMachines",
-            "apiVersion": "2017-03-30",
+            "apiVersion": "2018-06-01",
             "location": "[parameters('location')]",
+            "tags": "[parameters('tagValues')]",
             "copy": {
                 "name": "virtualMachineLoop",
                 "count": "[parameters('numberOfInstances')]"
             },
             "dependsOn": [
-                "nicLoop",
+                "[concat('Microsoft.Network/networkInterfaces/', parameters('virtualMachineNamePrefix'), copyIndex(1),'_NIC1')]",
                 "[concat('Microsoft.Compute/availabilitySets/', parameters('availabilitySetName'))]",
                 "[concat('Microsoft.Storage/storageAccounts/', parameters('storageAccountName'))]"
                ],
@@ -133,23 +165,18 @@
                     },
                     "osDisk": {
                         "createOption": "fromImage",
-                        "vhd": {
-                            "uri": "[concat(concat(reference(resourceId(resourceGroup().name, 'Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2017-06-01').primaryEndpoints['blob'], 'vhds/'), parameters('virtualMachineNamePrefix'), copyIndex(1), '_os.vhd')]"
-                        },
-                        "name": "[concat(parameters('virtualMachineNamePrefix'), '_os')]"
+                        "name": "[concat(parameters('virtualMachineNamePrefix'), copyIndex(), '_os')]",
+                        "caching": "ReadWrite"
                     },
                     "copy": [
                         {
                             "name": "dataDisks",
                             "count": "[parameters('numberOfDataDisks')]",
                             "input": {
-                                "caching": "ReadWrite",
+                                "caching": "ReadOnly",
                                 "diskSizeGB": "[parameters('sizeOfDataDisksInGB')]",
                                 "lun": "[copyIndex('dataDisks')]",
                                 "name": "[concat(parameters('virtualMachineNamePrefix'), copyIndex(1), '_data', copyIndex('dataDisks'))]",
-                                "vhd": {
-                                    "uri": "[uri(reference(concat('Microsoft.Storage/storageAccounts/', concat(parameters('storageAccountName'))), '2017-06-01').primaryEndpoints.blob, concat('/vhds/', parameters('virtualMachineNamePrefix'), copyIndex(1), '_data', copyIndex('dataDisks'), '.vhd'))]"
-                                },
                                 "createOption": "Empty"
                             }
                         }
@@ -177,18 +204,23 @@
         {
             "name": "[parameters('availabilitySetName')]",
             "type": "Microsoft.Compute/availabilitySets",
-            "apiVersion": "2016-04-30-preview",
+            "apiVersion": "2018-06-01",
             "location": "[parameters('location')]",
+            "tags": "[parameters('tagValues')]",
             "properties": {
                 "platformFaultDomainCount": "[parameters('availabilitySetPlatformFaultDomainCount')]",
                 "platformUpdateDomainCount": "[parameters('availabilitySetPlatformUpdateDomainCount')]"
+            },
+            "sku": {
+                "name": "Aligned"
             }
         },
         {
             "name": "[parameters('storageAccountName')]",
             "type": "Microsoft.Storage/storageAccounts",
-            "apiVersion": "2017-06-01",
+            "apiVersion": "2018-02-01",
             "location": "[parameters('location')]",
+            "tags": "[parameters('tagValues')]",
             "sku": {
                  "name": "[parameters('storageAccountType')]"
             },
@@ -197,8 +229,9 @@
         {
             "name": "[concat(parameters('virtualMachineNamePrefix'), copyIndex(1),'_NIC1')]",
             "type": "Microsoft.Network/networkInterfaces",
-            "apiVersion": "2017-03-01",
+            "apiVersion": "2017-10-01",
             "location": "[parameters('location')]",
+            "tags": "[parameters('tagValues')]",
             "copy": {
                 "name": "nicLoop",
                 "count": "[parameters('numberOfInstances')]"
@@ -224,6 +257,7 @@
             "type": "Microsoft.Compute/virtualMachines/extensions",
             "name": "[concat(concat(parameters('virtualMachineNamePrefix'), copyIndex(1)),'/joindomain')]",
             "location": "[resourceGroup().location]",
+            "tags": "[parameters('tagValues')]",
             "copy": {
                 "name": "domainJoinLoop",
                 "count": "[parameters('numberOfInstances')]"
@@ -240,7 +274,7 @@
                     "Name": "[parameters('domainToJoin')]",
                     "OUPath": "[parameters('ouPath')]",
                     "User": "[concat(parameters('domainToJoin'), '\\', parameters('domainUsername'))]",
-                    "Restart": "true",
+                    "Restart": "false",
                     "Options": "[parameters('domainJoinOptions')]"
                 },
                 "protectedSettings": {
@@ -253,6 +287,7 @@
             "name": "[concat(parameters('virtualMachineNamePrefix'), copyIndex(1),'/BGInfo')]",
             "apiVersion": "2017-12-01",
             "location": "[resourceGroup().location]",
+            "tags": "[parameters('tagValues')]",
             "copy": {
                 "name": "bgInfoLoop",
                 "count": "[parameters('numberOfInstances')]"
@@ -270,7 +305,36 @@
                     ]
                 }  
             }
-        }
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "name": "[concat(parameters('virtualMachineNamePrefix'), copyIndex(1),'/AzureDiskEncryption')]",
+            "location": "[parameters('location')]",
+            "apiVersion": "2018-06-01",
+            "tags": "[parameters('tagValues')]",
+            "copy": {
+                "name": "DiskEncryptionLoop",
+                "count": "[parameters('numberOfInstances')]"
+            },
+            "dependsOn": [
+                "[concat('Microsoft.Compute/virtualMachines/', parameters('virtualMachineNamePrefix'), copyIndex(1))]"
+            ],
+            "properties": {
+                "publisher": "Microsoft.Azure.Security",
+                "type": "AzureDiskEncryption",
+                "typeHandlerVersion": "2.2",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                    "EncryptionOperation": "EnableEncryption",
+                    "KeyVaultURL": "[parameters('keyVaultURL')]",
+                    "KeyVaultResourceId": "[parameters('keyVaultResourceId')]",
+                    "KeyEncryptionKeyURL": "[parameters('keyEncryptionKeyURL')]",
+                    "KekVaultResourceId": "[parameters('keyVaultResourceId')]",
+                    "VolumeType": "All",
+                    "ResizeOSDisk": "false"
+              }
+            }
+        }        
     ],
     "outputs": {
         "adminUsername": {
