@@ -5,6 +5,6 @@ This template and parameter file will create a specified number of VM's and numb
 "licenseType": "Windows_Server",
 
 Update 9/16/2018 -  
-Added Drive Encryption to the template http://www.ciraltos.com/?p=596&preview=true
+Added Drive Encryption to the template http://www.ciraltos.com/azure-disk-encryption-v2/
 Changed to Managed Disks
 Added tags to the deployment
